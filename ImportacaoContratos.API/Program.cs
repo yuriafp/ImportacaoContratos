@@ -1,4 +1,8 @@
 
+using ImportacaoContratos.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using System;
+
 namespace ImportacaoContratos.API
 {
     public class Program
@@ -13,6 +17,10 @@ namespace ImportacaoContratos.API
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            //dbcontext
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             var app = builder.Build();
 

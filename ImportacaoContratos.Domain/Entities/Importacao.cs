@@ -13,7 +13,7 @@ namespace ImportacaoContratos.Domain.Entities
         public DateTime DataImportacao { get; set; }
 
         //vinculo com o usuário que realizou a importação
-        public string UsuarioId { get; set; } = string.Empty;
+        public int UsuarioId { get; set; }
         public Usuario Usuario { get; set; } = null!;
 
         //relacionamento de um para muitos com os contratos importados
