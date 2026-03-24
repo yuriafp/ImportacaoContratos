@@ -4,20 +4,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ImportacaoContratos.Domain.Entities
+namespace ImportacaoContratos.Domain.Entities;
+
+public class Importacao
 {
-    public class Importacao
-    {
-        public int Id { get; set; }
-        public string NomeArquivo { get; set; } = string.Empty;
-        public DateTime DataImportacao { get; set; }
+    public int Id { get; set; }
+    public string NomeArquivo { get; set; } = string.Empty;
+    public DateTime DataImportacao { get; set; }
 
-        //vinculo com o usuário que realizou a importação
-        public int UsuarioId { get; set; }
-        public Usuario Usuario { get; set; } = null!;
+    //vinculo com o usuário que realizou a importação
+    public int UsuarioId { get; set; }
+    public Usuario Usuario { get; set; } = null!;
 
-        //relacionamento de um para muitos com os contratos importados
-        public ICollection<Contrato> Contratos { get; set; } = new List<Contrato>();
-    }
+    //relacionamento de um para muitos com os contratos importados
+    public ICollection<Contrato> Contratos { get; set; } = new List<Contrato>();
 }
 

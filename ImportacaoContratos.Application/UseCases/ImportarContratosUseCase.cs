@@ -2,7 +2,7 @@
 using ImportacaoContratos.Application.Validations;
 using ImportacaoContratos.Domain.Entities;
 using ImportacaoContratos.Domain.Interfaces;
-using ImportacaoContratos.Application.Extensions; // <-- Não te esqueças deste using!
+using ImportacaoContratos.Application.Extensions;
 
 namespace ImportacaoContratos.Application.UseCases;
 

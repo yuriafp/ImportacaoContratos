@@ -24,4 +24,28 @@ public class ContratoRepository : IContratoRepository
         await _context.Importacoes.AddAsync(importacao);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Importacao>> ObterHistoricoImportacoesAsync()
+    {
+        return await _context.Importacoes
+            .Include(i => i.Usuario)
+            .Include(i => i.Contratos)
+            .OrderByDescending(i => i.DataImportacao)
+            .ToListAsync();
+    }
+
+    public async Task<List<Cliente>> ObterResumoClientesAsync()
+    {
+        return await _context.Clientes
+            .Include(c => c.Contratos)
+            .ToListAsync();
+    }
+
+    public async Task<List<Contrato>> ObterTodosContratosAsync()
+    {
+        return await _context.Contratos
+        .Include(c => c.Cliente)
+        .OrderBy(c => c.Vencimento)
+        .ToListAsync();
+    }
 }
