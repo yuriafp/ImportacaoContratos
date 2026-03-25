@@ -1,0 +1,94 @@
+﻿@page "/"
+@inject AuthService AuthService
+@inject NavigationManager Nav
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 90vh;">
+    <div class="card shadow-lg border-0" style="width: 400px;">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">@(EhModoRegistro ? "Criar Conta" : "Login")</h2>
+            </div>
+
+            @if (EhModoRegistro)
+            {
+                <EditForm Model="@registroModel" OnValidSubmit="HandleRegister">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <InputText @bind-Value="registroModel.Nome" class="form-control" placeholder="Nome Completo" />
+                        <ValidationMessage For="@(() => registroModel.Nome)" />
+                    </div>
+                    <div class="mb-3">
+                        <InputText @bind-Value="registroModel.Email" class="form-control" placeholder="E-mail" />
+                        <ValidationMessage For="@(() => registroModel.Email)" />
+                    </div>
+                    <div class="mb-3">
+                        <InputText @bind-Value="registroModel.Senha" type="password" class="form-control" placeholder="Senha" />
+                        <ValidationMessage For="@(() => registroModel.Senha)" />
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 py-2">Cadastrar</button>
+                </EditForm>
+            }
+            else
+            {
+                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="E-mail" />
+                        <ValidationMessage For="@(() => loginModel.Email)" />
+                    </div>
+                    <div class="mb-3">
+                        <InputText @bind-Value="loginModel.Senha" type="password" class="form-control" placeholder="Senha" />
+                        <ValidationMessage For="@(() => loginModel.Senha)" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2">Entrar</button>
+                </EditForm>
+            }
+
+            @if (!string.IsNullOrEmpty(feedbackMsg))
+            {
+                <div class="alert alert-info mt-3 py-2 small">@feedbackMsg</div>
+            }
+
+            <hr />
+            <div class="text-center mt-3">
+                <button class="btn btn-link text-decoration-none" @onclick="ToggleMode">
+                    @(EhModoRegistro ? "Já tem conta? Faça Login" : "Ainda não tem conta? Cadastre-se")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool EhModoRegistro = false;
+    private LoginDto loginModel = new();
+    private RegistroDto registroModel = new();
+    private string? feedbackMsg;
+
+    private void ToggleMode()
+    {
+        EhModoRegistro = !EhModoRegistro;
+        feedbackMsg = null;
+    }
+
+    private async Task HandleLogin()
+    {
+        var sucesso = await AuthService.Login(loginModel);
+        if (sucesso) Nav.NavigateTo("/relatorios");
+        else feedbackMsg = "Credenciais inválidas.";
+    }
+
+    private async Task HandleRegister()
+    {
+        var erro = await AuthService.Registro(registroModel);
+        if (erro == null)
+        {
+            feedbackMsg = "Conta criada com sucesso! Já pode fazer login.";
+            EhModoRegistro = false; 
+        }
+        else
+        {
+            feedbackMsg = erro;
+        }
+    }
+}

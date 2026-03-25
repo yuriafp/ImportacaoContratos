@@ -79,7 +79,23 @@ public class Program
                    });
         });
 
+        // Configuração do CORS para permitir requisições do Blazor
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("BlazorApp", policy =>
+            {
+                policy.AllowAnyOrigin() //só para teste
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
+
         var app = builder.Build();
+
+        app.UseRouting();
+
+        // Habilitar CORS
+        app.UseCors("BlazorApp");
 
         // middlewares
         app.UseMiddleware<ExceptionHandlingMiddleware>();

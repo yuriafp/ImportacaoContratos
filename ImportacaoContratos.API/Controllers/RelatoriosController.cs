@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ImportacaoContratos.API.Controllers;
 
+[ApiController]
 [Authorize]
+[Route("api/[controller]")]
 public class RelatoriosController : ControllerBase
 {
     private readonly ObterRelatoriosUseCase _relatoriosUseCase;

@@ -74,7 +74,6 @@ public class ImportarContratosUseCase
                 }
             }
 
-            // 4. Cria o Contrato com os dados limpos
             var contrato = new Contrato
             {
                 NumeroContrato = numeroContratoLimpo,
@@ -87,14 +86,13 @@ public class ImportarContratosUseCase
             importacao.Contratos.Add(contrato);
         }
 
-        // 5. Grava apenas se houve linhas válidas
         if (importacao.Contratos.Any())
         {
             await _repository.SalvarImportacaoAsync(importacao);
         }
         else
         {
-            throw new ArgumentException("Nenhum registo válido foi encontrado no ficheiro para importar.");
+            throw new ArgumentException("Nenhum registro válido foi encontrado no ficheiro para importar.");
         }
 
         return listaDeErros;

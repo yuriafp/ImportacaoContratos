@@ -1,0 +1,314 @@
+﻿@page "/relatorios"
+@using ImportacaoContratos.BlazorUI.Models
+@using ImportacaoContratos.BlazorUI.Services
+@inject RelatoriosService RelatoriosService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="container-fluid mt-4 px-4">
+    @* --- CABEÇALHO E UPLOAD --- *@
+    <div class="row align-items-center mb-4 pb-3 border-bottom">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-dark mb-0">
+                <i class="bi bi-graph-up-arrow text-primary me-2"></i>Relatórios de Contratos
+            </h2>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body py-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-filetype-csv fs-4 text-success"></i>
+                    <InputFile OnChange="HandleFileSelected" class="form-control form-control-sm" accept=".csv" />
+                    <button class="btn btn-primary btn-sm px-3" @onclick="ImportarArquivo" disabled="@(arquivoSelecionado == null || fazendoUpload)">
+                        @if (fazendoUpload)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-cloud-arrow-up"></i> <span class="ms-1">Importar</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* --- ALERTAS DE FEEDBACK --- *@
+    @if (!string.IsNullOrEmpty(feedbackMsg))
+    {
+        <div class="alert alert-info border-0 shadow-sm d-flex align-items-center animate-fade" role="alert">
+            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+            <div>@((MarkupString)feedbackMsg)</div>
+        </div>
+    }
+
+    @if (resumoClientes == null)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center mt-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+            <p class="mt-3 fw-bold text-secondary">Processando...</p>
+        </div>
+    }
+    else
+    {
+        @* --- KPI'S --- *@
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 p-3 border-start border-4 border-primary">
+                    <div class="text-uppercase small fw-bold text-muted">Total de Clientes</div>
+                    <div class="h3 fw-bold mb-0">@resumoClientes.Count</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 p-3 border-start border-4 border-success">
+                    <div class="text-uppercase small fw-bold text-muted">Valor total em contratos</div>
+                    <div class="h3 fw-bold mb-0 text-success">@resumoClientes.Sum(c => c.ValorTotalContratos).ToString("C2")</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 p-3 border-start border-4 border-danger">
+                    <div class="text-uppercase small fw-bold text-muted">Clientes em Atraso</div>
+                    <div class="h3 fw-bold mb-0 text-danger">@resumoClientes.Count(c => c.MaiorAtrasoDias > 0)</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 p-3 border-start border-4 border-warning">
+                    <div class="text-uppercase small fw-bold text-muted">Maior Atraso</div>
+                    <div class="h3 fw-bold mb-0">@(resumoClientes.Any() ? resumoClientes.Max(c => c.MaiorAtrasoDias) : 0) <small class="fs-6">dias</small></div>
+                </div>
+            </div>
+        </div>
+
+        @* --- TABELA RESUMO --- *@
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-secondary">Resumo Consolidado</h5>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CarregarDados">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small text-muted text-uppercase">
+                            <th class="ps-4">Nome do Cliente</th>
+                            <th>CPF</th>
+                            <th class="text-end">Total Acumulado</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cliente in resumoClientes)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-bold">@cliente.NomeCliente</td>
+                                <td>@cliente.Cpf</td>
+                                <td class="text-end fw-bold">@cliente.ValorTotalContratos.ToString("C2")</td>
+                                <td class="text-center">
+                                    @if (cliente.MaiorAtrasoDias > 0)
+                                    {
+                                        <span class="badge rounded-pill bg-danger-subtle text-danger px-3">
+                                            @cliente.MaiorAtrasoDias dias de atraso
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill bg-success-subtle text-success px-3">Em dia</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm @(clienteExpandido == cliente.Cpf ? "btn-dark" : "btn-light border")"
+                                            @onclick="() => MostraDetalhes(cliente.Cpf)">
+                                        <i class="bi @(clienteExpandido == cliente.Cpf ? "bi-eye-slash" : "bi-eye")"></i>
+                                        @(clienteExpandido == cliente.Cpf ? " Fechar" : " Detalhes")
+                                    </button>
+                                </td>
+                            </tr>
+
+                            @* --- DETALHAMENTO --- *@
+                            @if (clienteExpandido == cliente.Cpf)
+                            {
+                                <tr class="animate-fade">
+                                    <td colspan="5" class="bg-light p-4">
+                                        <div class="card border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <h6 class="fw-bold text-primary mb-3">Lista de Contratos - @cliente.NomeCliente</h6>
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr class="text-muted small">
+                                                            <th>Número</th>
+                                                            <th>Produto</th>
+                                                            <th>Vencimento</th>
+                                                            <th>Dias em Atraso</th>
+                                                            <th class="text-end">Valor</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var ct in cliente.Contratos)
+                                                        {
+                                                            var dias = (DateTime.Today - ct.Vencimento).Days;
+                                                            <tr>
+                                                                <td>@ct.NumeroContrato</td>
+                                                                <td>@ct.Produto</td>
+                                                                <td>@ct.Vencimento.ToShortDateString()</td>
+                                                                <td>
+                                                                    @if (dias > 0)
+                                                                    {
+                                                                        <span class="badge rounded-pill bg-danger-subtle text-danger px-2">
+                                                                            @dias dias
+                                                                        </span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="badge rounded-pill bg-success-subtle text-success px-2">Em dia</span>
+                                                                    }
+                                                                </td>
+                                                                <td class="text-end fw-bold">@ct.Valor.ToString("C2")</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* --- HISTÓRICO DE IMPORTAÇÕES --- *@
+    <div class="card shadow-sm border-0 rounded-3 mt-5 mb-5">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold text-secondary">
+                <i class="bi bi-clock-history me-2"></i>Histórico de Arquivos Importados
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-uppercase">
+                        <th class="ps-4">Arquivo</th>
+                        <th>Data/Hora</th>
+                        <th>Usuário</th>
+                        <th>Quantidade de contratos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (historicoImportacoes == null)
+                    {
+                        <tr><td colspan="3" class="text-center p-4">Carregando histórico...</td></tr>
+                    }
+                    else if (!historicoImportacoes.Any())
+                    {
+                        <tr><td colspan="3" class="text-center p-4">Nenhuma importação encontrada.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var imp in historicoImportacoes)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-bold">@imp.NomeArquivo</td>
+                                <td>@imp.DataImportacao.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-dark border">
+                                        <i class="bi bi-person-fill"></i> @imp.NomeUsuario
+                                    </span>
+                                </td>
+                                <td>@imp.TotalContratos</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .animate-fade { animation: slideIn 0.3s ease-out; }
+    @@keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    .bg-danger-subtle { background-color: #ffdce0; }
+    .bg-success-subtle { background-color: #d1e7dd; }
+</style>
+
+@code {
+    private List<ClienteResumoDto>? resumoClientes;
+    private List<ImportacaoDto>? historicoImportacoes;
+    private string? clienteExpandido;
+    private IBrowserFile? arquivoSelecionado;
+    private bool fazendoUpload = false;
+    private string? feedbackMsg;
+    private List<string> errosImportacao = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        try
+        {
+            resumoClientes = await RelatoriosService.ObterResumoClientesAsync();
+            historicoImportacoes = await RelatoriosService.ObterHistoricoImportacoesAsync();
+        }
+        catch
+        {
+            feedbackMsg = "Erro ao carregar dados.";
+        }
+    }
+
+    private void MostraDetalhes(string cpf) => clienteExpandido = (clienteExpandido == cpf) ? null : cpf;
+
+    private void HandleFileSelected(InputFileChangeEventArgs e) => arquivoSelecionado = e.File;
+
+    private async Task ImportarArquivo()
+    {
+        if (arquivoSelecionado == null) return;
+
+        fazendoUpload = true;
+        feedbackMsg = "Processando arquivo...";
+        errosImportacao.Clear();
+
+        try
+        {
+            var resultado = await RelatoriosService.ImportarCsvAsync(arquivoSelecionado);
+
+            if (resultado != null)
+            {
+                if (resultado.Any())
+                {
+                    feedbackMsg = $"<b>Importação finalizada com {resultado.Count} alertas.</b>";
+                    errosImportacao = resultado;
+                }
+                else
+                {
+                    feedbackMsg = "<b>Arquivo processado!</b>";
+                }
+
+                await CarregarDados();
+                arquivoSelecionado = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackMsg = $"<span class='text-danger'><b>Falha:</b> {ex.Message}</span>";
+        }
+        finally
+        {
+            fazendoUpload = false;
+            StateHasChanged();
+
+            _ = Task.Delay(7000).ContinueWith(_ =>
+            {
+                feedbackMsg = null;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+    }
+}
