@@ -36,9 +36,25 @@
     @* --- ALERTAS DE FEEDBACK --- *@
     @if (!string.IsNullOrEmpty(feedbackMsg))
     {
-        <div class="alert alert-info border-0 shadow-sm d-flex align-items-center animate-fade" role="alert">
-            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-            <div>@((MarkupString)feedbackMsg)</div>
+        <div class="alert alert-info border-0 shadow-sm animate-fade" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                <div>@((MarkupString)feedbackMsg)</div>
+            </div>
+        
+            @* Se houver erros na lista, exibe de forma organizada *@
+            @if (errosImportacao != null && errosImportacao.Any())
+            {
+                <hr class="mt-2 mb-2 opacity-25" />
+                <div class="ms-4 mt-2" style="max-height: 150px; overflow-y: auto;">
+                    <ul class="mb-0 small text-danger fw-bold">
+                        @foreach (var erro in errosImportacao)
+                        {
+                            <li>@erro</li>
+                        }
+                    </ul>
+                </div>
+            }
         </div>
     }
 
@@ -304,7 +320,7 @@
             fazendoUpload = false;
             StateHasChanged();
 
-            _ = Task.Delay(7000).ContinueWith(_ =>
+            _ = Task.Delay(30000).ContinueWith(_ =>
             {
                 feedbackMsg = null;
                 InvokeAsync(StateHasChanged);

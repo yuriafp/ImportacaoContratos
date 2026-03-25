@@ -1,6 +1,7 @@
 ﻿using ImportacaoContratos.BlazorUI.Models;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace ImportacaoContratos.BlazorUI.Services;
 
@@ -20,11 +21,10 @@ public class RelatoriosService
     }
     public async Task<List<string>> ImportarCsvAsync(IBrowserFile arquivo)
     {
-        var content = new MultipartFormDataContent();
+        using var content = new MultipartFormDataContent();
         long maxFileSize = 512 * 1024 * 1024; // 512MB
 
-        var conteudoArquivo = new StreamContent(arquivo.OpenReadStream(maxFileSize));
-
+        using var conteudoArquivo = new StreamContent(arquivo.OpenReadStream(maxFileSize));
         conteudoArquivo.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/csv");
 
         content.Add(conteudoArquivo, "arquivo", arquivo.Name);
@@ -33,10 +33,24 @@ public class RelatoriosService
 
         if (response.IsSuccessStatusCode)
         {
+            var jsonBruto = await response.Content.ReadAsStringAsync();
+
             try
             {
-                var listaDeErros = await response.Content.ReadFromJsonAsync<List<string>>();
-                return listaDeErros ?? new List<string>();
+                using var document = JsonDocument.Parse(jsonBruto);
+
+                if (document.RootElement.TryGetProperty("erros", out var errosElement))
+                {
+                    var opcoes = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    return errosElement.Deserialize<List<string>>(opcoes) ?? new List<string>();
+                }
+
+                if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<string>>(jsonBruto) ?? new List<string>();
+                }
+
+                return new List<string>();
             }
             catch
             {
@@ -45,8 +59,7 @@ public class RelatoriosService
         }
 
         var errorBody = await response.Content.ReadAsStringAsync();
-
-        throw new Exception(string.IsNullOrWhiteSpace(errorBody) ? "Erro:" : errorBody);
+        throw new Exception(string.IsNullOrWhiteSpace(errorBody) ? "Erro no servidor." : errorBody);
     }
 
     public async Task<List<ImportacaoDto>> ObterHistoricoImportacoesAsync()
