@@ -9,4 +9,5 @@ public interface IContratoRepository
     Task<List<Importacao>> ObterHistoricoImportacoesAsync();
     Task<List<Contrato>> ObterTodosContratosAsync();
     Task<List<Cliente>> ObterResumoClientesAsync();
+    Task<Contrato> ObterContratoPorNumeroAsync(string numeroContrato);
 }

@@ -31,10 +31,11 @@ public class ImportarContratosUseCase
         };
 
         int linhaAtual = 1;
+        bool processouAlgumRegistroValido = false; // Flag para saber se o arquivo não era vazio
 
         foreach (var registro in registrosCsv)
         {
-            linhaAtual++; //levando em conta o cabeçalho do CSV
+            linhaAtual++; // levando em conta o cabeçalho do CSV
 
             var resultadoValidacao = validador.Validate(registro);
 
@@ -45,19 +46,20 @@ public class ImportarContratosUseCase
                 continue;
             }
 
+            processouAlgumRegistroValido = true;
+
             // Normalização dos dados: CPF só com números, e campos de texto sem acentos e espaços extras
             var cpfLimpo = registro.Cpf.SomenteNumeros();
             var nomeLimpo = registro.Nome.RemoverAcentos().Trim();
             var produtoLimpo = registro.Produto.RemoverAcentos().Trim();
             var numeroContratoLimpo = registro.Contrato.RemoverAcentos().Trim();
 
-           
             //verificar se cliente existe
             var cliente = await _repository.ObterClientePorCpfAsync(cpfLimpo);
 
             if (cliente == null)
             {
-                var clienteJaNaLista = importacao.Contratos.FirstOrDefault(c => c.Cliente.Cpf == cpfLimpo)?.Cliente;
+                var clienteJaNaLista = importacao.Contratos.FirstOrDefault(c => c.Cliente != null && c.Cliente.Cpf == cpfLimpo)?.Cliente;
 
                 if (clienteJaNaLista != null)
                 {
@@ -66,33 +68,54 @@ public class ImportarContratosUseCase
                 else
                 {
                     // Se o cliente não existe, cria um novo
-                    cliente = new Cliente
-                    {
-                        Nome = nomeLimpo, 
-                        Cpf = cpfLimpo
-                    };
+                    cliente = new Cliente { Nome = nomeLimpo, Cpf = cpfLimpo };
                 }
             }
 
-            var contrato = new Contrato
-            {
-                NumeroContrato = numeroContratoLimpo,
-                Produto = produtoLimpo,
-                Vencimento = registro.Vencimento,
-                Valor = registro.Valor,
-                Cliente = cliente
-            };
+            var contratoExistente = await _repository.ObterContratoPorNumeroAsync(numeroContratoLimpo);
 
-            importacao.Contratos.Add(contrato);
+            if (contratoExistente != null)
+            {
+                contratoExistente.Produto = produtoLimpo;
+                contratoExistente.Vencimento = registro.Vencimento;
+                contratoExistente.Valor = registro.Valor;
+                contratoExistente.Cliente = cliente;
+
+            }
+            else
+            {
+                var contratoNaLista = importacao.Contratos.FirstOrDefault(c => c.NumeroContrato == numeroContratoLimpo);
+
+                if (contratoNaLista != null)
+                {
+                    contratoNaLista.Produto = produtoLimpo;
+                    contratoNaLista.Vencimento = registro.Vencimento;
+                    contratoNaLista.Valor = registro.Valor;
+                    contratoNaLista.Cliente = cliente;
+                }
+                else
+                {
+                    var novoContrato = new Contrato
+                    {
+                        NumeroContrato = numeroContratoLimpo,
+                        Produto = produtoLimpo,
+                        Vencimento = registro.Vencimento,
+                        Valor = registro.Valor,
+                        Cliente = cliente
+                    };
+
+                    importacao.Contratos.Add(novoContrato);
+                }
+            }
         }
 
-        if (importacao.Contratos.Any())
+        if (processouAlgumRegistroValido)
         {
             await _repository.SalvarImportacaoAsync(importacao);
         }
         else
         {
-            throw new ArgumentException("Nenhum registro válido foi encontrado no ficheiro para importar.");
+            throw new ArgumentException("Nenhum registro válido foi encontrado no arquivo para importar.");
         }
 
         return listaDeErros;

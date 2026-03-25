@@ -48,4 +48,9 @@ public class ContratoRepository : IContratoRepository
         .OrderBy(c => c.Vencimento)
         .ToListAsync();
     }
+
+    public async Task<Contrato> ObterContratoPorNumeroAsync(string numeroContrato)
+    {
+        return await _context.Contratos.FirstOrDefaultAsync(c => c.NumeroContrato == numeroContrato);
+    }
 }
