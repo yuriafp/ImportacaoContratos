@@ -1,8 +1,17 @@
 ﻿@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
 <div class="page">
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" @onclick="FazerLogout">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </button>
+                </Authorized>
+            </AuthorizeView>
         </div>
 
         <article class="content px-4">
@@ -10,3 +19,11 @@
         </article>
     </main>
 </div>
+
+@code {
+    private async Task FazerLogout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+}

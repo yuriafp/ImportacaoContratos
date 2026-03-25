@@ -1,6 +1,8 @@
 using ImportacaoContratos.BlazorUI;
 using ImportacaoContratos.BlazorUI.Handlers;
-using ImportacaoContratos.BlazorUI.Services; 
+using ImportacaoContratos.BlazorUI.Security;
+using ImportacaoContratos.BlazorUI.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,11 +17,15 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri("https://localhost:7007/")
 });
 
+//auth
+builder.Services.AddAuthorizationCore();
+
 //services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RelatoriosService>();
 builder.Services.AddScoped<JwtAuthorizationHandler>();
 
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 
 builder.Services.AddHttpClient("API", client =>
 {
